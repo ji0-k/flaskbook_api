@@ -5,9 +5,9 @@ import numpy as np
 import torch
 from flask import current_app, jsonify
 
-from flaskbook_api.api.postprocess import draw_lines, draw_texts, make_color, make_line
-from flaskbook_api.api.preparation import load_image
-from flaskbook_api.api.preprocess import image_to_tensor
+from api.postprocess import draw_lines, draw_texts, make_color, make_line
+from api.preparation import load_image
+from api.preprocess import image_to_tensor
 
 basedir = Path(__file__).parent.parent
 

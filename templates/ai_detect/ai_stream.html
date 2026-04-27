@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>IP CAM 객체 감지</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: #0a0a0a;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 20px;
+            font-family: 'Noto Sans KR', sans-serif;
+            color: white;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,255,100,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,100,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+
+        .top-bar {
+            width: 820px;
+            max-width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            z-index: 1;
+        }
+
+        .back-btn {
+            text-decoration: none;
+            color: rgba(255,255,255,0.3);
+            font-size: 0.75rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 6px 14px;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            color: #00ff64;
+            border-color: rgba(0,255,100,0.4);
+        }
+
+        h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            letter-spacing: 0.1em;
+            color: white;
+            z-index: 1;
+        }
+
+        h1 span { color: #00ff64; }
+
+        #status {
+            font-size: 0.7rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.3);
+            z-index: 1;
+        }
+
+        #status.connected { color: #00ff64; }
+        #status.disconnected { color: #cc2200; }
+
+        #video-frame {
+            width: 820px;
+            max-width: 100%;
+            border: 1px solid rgba(0,255,100,0.3);
+            z-index: 1;
+            display: block;
+        }
+
+        #btn-area {
+            display: flex;
+            gap: 12px;
+            margin: 16px 0;
+            z-index: 1;
+        }
+
+        .btn {
+            padding: 10px 28px;
+            border: 1px solid;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            background: transparent;
+        }
+
+        .btn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+        #btn-start {
+            border-color: #00ff64;
+            color: #00ff64;
+        }
+        #btn-start:hover:not(:disabled) {
+            background: #00ff64;
+            color: #000;
+        }
+
+        #btn-stop {
+            border-color: #cc2200;
+            color: #cc2200;
+        }
+        #btn-stop:hover:not(:disabled) {
+            background: #cc2200;
+            color: #fff;
+        }
+
+        #detection-container {
+            width: 820px;
+            max-width: 100%;
+            margin-top: 12px;
+            z-index: 1;
+        }
+
+        #detection-container h2 {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.25);
+            margin-bottom: 10px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            padding-bottom: 8px;
+        }
+
+        #detection-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+
+        .detection-tag {
+            border: 1px solid rgba(0,255,100,0.2);
+            padding: 5px 14px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: fadeIn 0.2s ease;
+            background: rgba(0,255,100,0.04);
+        }
+
+        .detection-tag .label {
+            color: #00ff64;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .detection-tag .score {
+            color: rgba(255,255,255,0.3);
+            font-size: 0.72rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .hint { color: rgba(255,255,255,0.2); font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <a href="/" class="back-btn">← 메인으로</a>
+        <h1>IP <span>CAM</span></h1>
+        <p id="status">● 연결 중...</p>
+    </div>
+
+    <img id="video-frame" src="" alt="스트림 로딩 중..."/>
+
+    <div id="btn-area">
+        <button class="btn" id="btn-start">▶ 객체탐지 시작</button>
+        <button class="btn" id="btn-stop" disabled>■ 객체탐지 종료</button>
+    </div>
+
+    <div id="detection-container">
+        <h2>🔍 탐지된 객체</h2>
+        <div id="detection-list">
+            <span class="hint">탐지 시작 버튼을 눌러주세요.</span>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const btnStart = document.getElementById('btn-start');
+        const btnStop  = document.getElementById('btn-stop');
+        const status   = document.getElementById('status');
+
+        socket.on('connect', () => {
+            status.innerText = '● 연결됨';
+            status.className = 'connected';
+        });
+
+        socket.on('disconnect', () => {
+            status.innerText = '● 연결 끊김';
+            status.className = 'disconnected';
+        });
+
+        socket.on('video_frame', (data) => {
+            document.getElementById('video-frame').src =
+                'data:image/jpeg;base64,' + data.frame;
+        });
+
+        socket.on('detection_result', (data) => {
+            const list = document.getElementById('detection-list');
+            if (!data.detections || data.detections.length === 0) return;
+            list.innerHTML = '';
+            data.detections.forEach(d => {
+                const tag = document.createElement('div');
+                tag.className = 'detection-tag';
+                tag.innerHTML = `
+                    <span class="label">${d.class_name}</span>
+                    <span class="score">${(d.confidence * 100).toFixed(1)}%</span>
+                `;
+                list.appendChild(tag);
+            });
+        });
+
+        btnStart.addEventListener('click', () => {
+            socket.emit('start_detection');
+            btnStart.disabled = true;
+            btnStop.disabled  = false;
+            document.getElementById('detection-list').innerHTML =
+                '<span class="hint">탐지 중...</span>';
+        });
+
+        btnStop.addEventListener('click', () => {
+            socket.emit('stop_detection');
+            btnStart.disabled = false;
+            btnStop.disabled  = true;
+            document.getElementById('detection-list').innerHTML =
+                '<span class="hint">탐지가 종료되었습니다.</span>';
+        });
+    </script>
+</body>
+</html>

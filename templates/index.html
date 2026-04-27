@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 객체 감지 시스템</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: #0a0a0a;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Noto Sans KR', sans-serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 배경 그리드 효과 */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,255,100,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,100,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+
+        /* 스캔라인 효과 */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(
+                to bottom,
+                transparent 50%,
+                rgba(0,0,0,0.08) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        .container {
+            text-align: center;
+            z-index: 1;
+            padding: 40px 20px;
+        }
+
+        .badge {
+            display: inline-block;
+            border: 1px solid rgba(0,255,100,0.4);
+            color: #00ff64;
+            font-size: 0.7rem;
+            letter-spacing: 0.3em;
+            padding: 6px 16px;
+            margin-bottom: 32px;
+            text-transform: uppercase;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: clamp(5rem, 15vw, 10rem);
+            color: #ffffff;
+            line-height: 0.9;
+            letter-spacing: 0.02em;
+            margin-bottom: 8px;
+        }
+
+        h1 span {
+            color: #00ff64;
+            display: block;
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.35);
+            font-size: 0.85rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 60px;
+            font-weight: 300;
+        }
+
+        .btn-area {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 32px 48px;
+            text-decoration: none;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            min-width: 200px;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 2px;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .btn-ipcam::before { background: #00ff64; }
+        .btn-usbcam::before { background: #00aaff; }
+
+        .btn:hover {
+            background: rgba(255,255,255,0.07);
+            transform: translateY(-4px);
+        }
+
+        .btn:hover::before { transform: scaleX(1); }
+
+        .btn-ipcam:hover { border-color: rgba(0,255,100,0.4); }
+        .btn-usbcam:hover { border-color: rgba(0,170,255,0.4); }
+
+        .btn-num {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 3rem;
+            line-height: 1;
+        }
+
+        .btn-ipcam .btn-num { color: #00ff64; }
+        .btn-usbcam .btn-num { color: #00aaff; }
+
+        .btn-label {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .btn-desc {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.35);
+            letter-spacing: 0.05em;
+            font-weight: 300;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 24px;
+            color: rgba(255,255,255,0.15);
+            font-size: 0.7rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="badge">● LIVE SYSTEM ONLINE</div>
+
+        <h1>
+            OBJECT
+            <span>DETECT.</span>
+        </h1>
+
+        <p class="subtitle">실시간 AI 객체 감지 시스템 · YOLOv8</p>
+
+        <div class="btn-area">
+            <a href="/ai-detect/aistream" class="btn btn-ipcam">
+                <span class="btn-num">01</span>
+                <span class="btn-label">IP CAM</span>
+                <span class="btn-desc">RTSP 네트워크 카메라</span>
+            </a>
+            <a href="/ai-detect/usbstream" class="btn btn-usbcam">
+                <span class="btn-num">02</span>
+                <span class="btn-label">USB CAM</span>
+                <span class="btn-desc">노트북 내장 카메라</span>
+            </a>
+        </div>
+    </div>
+
+    <p class="footer">Flask · SocketIO · YOLOv8n</p>
+</body>
+</html>

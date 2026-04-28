@@ -37,7 +37,7 @@ def detect_objects(model, frame):
 
     for box in results.boxes:
         score = float(box.conf)
-        if score < 0.8:
+        if score < 0.6:
             continue
         label_id = int(box.cls)
         label_name = model.names[label_id]
@@ -95,6 +95,8 @@ def capture_thread(rtsp_url: str, buffer: FrameBuffer, stop_event: threading.Eve
             cap = open_capture(rtsp_url)
             if cap.isOpened():
                 fail_count = 0
+            else:
+                print(f"[WARN] 재연결 실패 ({fail_count}회차)")
             continue
 
         fail_count = 0
@@ -162,7 +164,7 @@ def run_rtsp_stream(socketio, rtsp_url: str, app):
             else:
                 if session_id is not None:
                     with app.app_context():
-                        session_obj = DetectionSession.query.get(session_id)
+                        session_obj = db.session.get(DetectionSession, session_id)
                         if session_obj:
                             session_obj.end()
                             db.session.commit()

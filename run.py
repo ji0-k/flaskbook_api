@@ -7,6 +7,8 @@ from api.config import config
 from api.service.AiStreamService import run_rtsp_stream, set_target
 from api.service.UsbCamService import run_usb_stream, set_usb_detection_active
 from api.extensions import db, migrate
+from api.service.ItsCctvService import (run_its_stream, stop_its_stream, set_its_detection_active, fetch_cctv_list)
+
 
 # .env 파일 로드
 load_dotenv()
@@ -54,6 +56,22 @@ def ai_stream():
 def usb_stream():
     return render_template('ai_detect/usb_stream.html')
 
+@app.route('/ai-detect/itsstream')
+def its_stream():
+    return render_template('ai_detect/its_stream.html')
+
+@app.route('/api/its/cctv-list')
+def its_cctv_list():
+    from flask import jsonify, request
+    cctv_type = request.args.get('cctvType', 1, type=int)
+    items = fetch_cctv_list(
+        api_key=os.environ.get('ITS_API_KEY', ''),
+        api_url="https://openapi.its.go.kr:9443/cctvInfo",
+        cctv_type=cctv_type,
+    )
+    return jsonify({'data': items})
+
+
 # --- AI (IP CAM) ---
 def run_ai_logic():
     print(f"[SYSTEM] AI Background Task Start")
@@ -97,5 +115,26 @@ def handle_usb_start():
 def handle_usb_stop():
     set_usb_detection_active(False)
 
+
+# ITS 
+@socketio.on('its_select_cctv')
+def handle_its_select(data):
+    cctv_url = data.get('url', '')
+    if not cctv_url:
+        return
+    socketio.start_background_task(run_its_stream, socketio, cctv_url)
+
+@socketio.on('its_start_detection')
+def handle_its_start():
+    set_its_detection_active(True)
+
+@socketio.on('its_stop_detection')
+def handle_its_stop():
+    set_its_detection_active(False)
+
+@socketio.on('its_disconnect_stream')
+def handle_its_disconnect():
+    stop_its_stream()
+
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5001, debug=False)
+    socketio.run(app, host='0.0.0.0', port=5001, debug=True)

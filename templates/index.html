@@ -147,6 +147,9 @@
 
         .btn-ipcam .btn-num { color: #00ff64; }
         .btn-usbcam .btn-num { color: #00aaff; }
+        .btn-itscam::before { background: #ffa500; }
+        .btn-itscam:hover { border-color: rgba(255,165,0,0.4); }
+        .btn-itscam .btn-num { color: #ffa500; }
 
         .btn-label {
             font-size: 1rem;
@@ -193,6 +196,11 @@
                 <span class="btn-num">02</span>
                 <span class="btn-label">USB CAM</span>
                 <span class="btn-desc">노트북 내장 카메라</span>
+            </a>
+            <a href="/ai-detect/itsstream" class="btn btn-itscam">
+                <span class="btn-num">03</span>
+                <span class="btn-label">ITS CCTV</span>
+                <span class="btn-desc">실시간 교통 CCTV</span>
             </a>
         </div>
     </div>

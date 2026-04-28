@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>ITS 실시간 CCTV</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: #0a0a0a;
+            min-height: 100vh;
+            font-family: 'Noto Sans KR', sans-serif;
+            color: white;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,255,100,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,100,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.08) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        /* 상단 헤더 */
+        .top-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 28px;
+            border-bottom: 1px solid rgba(255,165,0,0.15);
+            background: rgba(10,10,10,0.85);
+            backdrop-filter: blur(10px);
+        }
+
+        .top-bar .logo {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.6rem;
+            letter-spacing: 0.1em;
+            color: white;
+        }
+
+        .top-bar .logo span { color: #ffa500; }
+
+        .badge-live {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid rgba(255,165,0,0.4);
+            color: #ffa500;
+            font-size: 0.7rem;
+            letter-spacing: 0.25em;
+            padding: 5px 14px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.4);
+            text-decoration: none;
+            font-size: 0.8rem;
+            letter-spacing: 0.1em;
+            transition: color 0.2s;
+        }
+
+        .back-btn:hover { color: #ffa500; }
+
+        /* 메인 레이아웃 */
+        .main {
+            display: flex;
+            gap: 20px;
+            padding: 90px 24px 24px;
+            height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 좌측 패널 */
+        .side-panel {
+            width: 280px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .panel-box {
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.02);
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 0.85rem;
+            letter-spacing: 0.2em;
+            color: rgba(255,255,255,0.4);
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        /* 필터 */
+        .filter-area {
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-area select {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 8px 10px;
+            font-size: 0.8rem;
+            width: 100%;
+            outline: none;
+        }
+
+        .filter-area select option { background: #1a1a1a; }
+
+        .btn-load {
+            background: transparent;
+            border: 1px solid rgba(255,165,0,0.5);
+            color: #ffa500;
+            padding: 8px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 0.85rem;
+            letter-spacing: 0.2em;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .btn-load:hover { background: rgba(255,165,0,0.1); }
+
+        /* CCTV 목록 */
+        .cctv-list {
+            overflow-y: auto;
+            max-height: 340px;
+        }
+
+        .cctv-list::-webkit-scrollbar { width: 3px; }
+        .cctv-list::-webkit-scrollbar-track { background: transparent; }
+        .cctv-list::-webkit-scrollbar-thumb { background: rgba(255,165,0,0.3); }
+
+        .cctv-item {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .cctv-item:hover { background: rgba(255,165,0,0.05); }
+        .cctv-item.active { background: rgba(255,165,0,0.1); border-left: 2px solid #ffa500; }
+
+        .cctv-item-name {
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .cctv-item-coord {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.3);
+        }
+
+        .cctv-empty {
+            padding: 24px;
+            text-align: center;
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.25);
+            letter-spacing: 0.1em;
+        }
+
+        /* 우측 스트리밍 영역 */
+        .stream-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        /* 컨트롤 바 */
+        .control-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 18px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.02);
+        }
+
+        .cctv-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1rem;
+            letter-spacing: 0.15em;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .btn-group { display: flex; gap: 8px; }
+
+        .ctrl-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.5);
+            padding: 6px 18px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 0.8rem;
+            letter-spacing: 0.15em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .ctrl-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+        .ctrl-btn.green { border-color: rgba(0,255,100,0.4); color: #00ff64; }
+        .ctrl-btn.green:hover:not(:disabled) { background: rgba(0,255,100,0.1); }
+
+        .ctrl-btn.red { border-color: rgba(255,60,60,0.4); color: #ff3c3c; }
+        .ctrl-btn.red:hover:not(:disabled) { background: rgba(255,60,60,0.1); }
+
+        .ctrl-btn.gray:hover { background: rgba(255,255,255,0.05); color: white; }
+
+        /* 영상 화면 */
+        .video-box {
+            flex: 1;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: #050505;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .video-box img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: none;
+        }
+
+        .video-placeholder {
+            text-align: center;
+        }
+
+        .video-placeholder .big-num {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 5rem;
+            color: rgba(255,165,0,0.08);
+            line-height: 1;
+        }
+
+        .video-placeholder p {
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.2);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+
+        /* 탐지 결과 */
+        .detect-box {
+            padding: 12px 18px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.02);
+            min-height: 52px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .detect-label {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 0.2em;
+            color: rgba(255,255,255,0.2);
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+
+        .det-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            font-size: 0.72rem;
+            letter-spacing: 0.08em;
+            border: 1px solid rgba(0,255,100,0.4);
+            color: #00ff64;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 20px;
+            right: 24px;
+            color: rgba(255,255,255,0.1);
+            font-size: 0.65rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 상단 헤더 -->
+    <div class="top-bar">
+        <div class="logo">OBJECT <span>DETECT.</span></div>
+        <div class="badge-live">● ITS CCTV LIVE</div>
+        <a href="/" class="back-btn">← BACK</a>
+    </div>
+
+    <div class="main">
+        <!-- 좌측 패널 -->
+        <div class="side-panel">
+            <div class="panel-box">
+                <div class="panel-title">// CCTV FILTER</div>
+                <div class="filter-area">
+                    <select id="cctvType">
+                        <option value="1">도시고속도로</option>
+                        <option value="2">일반국도</option>
+                        <option value="3">고속도로</option>
+                    </select>
+                    <button class="btn-load" onclick="loadCctvList()">목록 불러오기</button>
+                </div>
+            </div>
+
+            <div class="panel-box" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+                <div class="panel-title">// CCTV LIST</div>
+                <div class="cctv-list" id="cctvList">
+                    <div class="cctv-empty">목록을 불러오세요</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 우측 스트리밍 -->
+        <div class="stream-area">
+            <div class="control-bar">
+                <span class="cctv-title" id="currentCctvName">// SELECT CCTV</span>
+                <div class="btn-group">
+                    <button class="ctrl-btn green" id="btnDetect" onclick="startDetection()" disabled>▶ 탐지 시작</button>
+                    <button class="ctrl-btn red" id="btnStop" onclick="stopDetection()" disabled>■ 탐지 중지</button>
+                    <button class="ctrl-btn gray" onclick="disconnectStream()">✕ 연결 끊기</button>
+                </div>
+            </div>
+
+            <div class="video-box">
+                <img id="streamImg" alt="stream">
+                <div class="video-placeholder" id="streamPlaceholder">
+                    <div class="big-num">ITS</div>
+                    <p>좌측에서 CCTV를 선택하세요</p>
+                </div>
+            </div>
+
+            <div class="detect-box">
+                <span class="detect-label">DETECTED //</span>
+                <div id="detectionResult" style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <span style="font-size:0.75rem; color:rgba(255,255,255,0.2); letter-spacing:0.1em;">탐지 대기 중</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <p class="footer">Flask · SocketIO · YOLOv8n · ITS OpenAPI</p>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+
+        async function loadCctvList() {
+            const cctvType = document.getElementById('cctvType').value;
+            const listEl = document.getElementById('cctvList');
+            listEl.innerHTML = '<div class="cctv-empty">불러오는 중...</div>';
+
+            try {
+                const res = await fetch(`/api/its/cctv-list?cctvType=${cctvType}`);
+                const json = await res.json();
+                const items = json.data;
+
+                if (!items.length) {
+                    listEl.innerHTML = '<div class="cctv-empty">데이터 없음</div>';
+                    return;
+                }
+
+                listEl.innerHTML = items.map(item => `
+                    <div class="cctv-item" onclick="selectCctv('${item.url}', '${item.name}', this)">
+                        <div class="cctv-item-name">${item.name}</div>
+                        <div class="cctv-item-coord">${item.x}, ${item.y}</div>
+                    </div>
+                `).join('');
+
+            } catch (e) {
+                listEl.innerHTML = '<div class="cctv-empty" style="color:#ff3c3c;">오류 발생</div>';
+            }
+        }
+
+        function selectCctv(url, name, el) {
+            document.querySelectorAll('.cctv-item').forEach(e => e.classList.remove('active'));
+            el.classList.add('active');
+
+            document.getElementById('currentCctvName').textContent = '// ' + name;
+            document.getElementById('streamPlaceholder').style.display = 'none';
+            document.getElementById('streamImg').style.display = 'block';
+            document.getElementById('btnDetect').disabled = false;
+
+            socket.emit('its_select_cctv', { url });
+        }
+
+        function startDetection() {
+            socket.emit('its_start_detection');
+            document.getElementById('btnDetect').disabled = true;
+            document.getElementById('btnStop').disabled = false;
+        }
+
+        function stopDetection() {
+            socket.emit('its_stop_detection');
+            document.getElementById('btnDetect').disabled = false;
+            document.getElementById('btnStop').disabled = true;
+            document.getElementById('detectionResult').innerHTML =
+                '<span style="font-size:0.75rem; color:rgba(255,255,255,0.2); letter-spacing:0.1em;">탐지 대기 중</span>';
+        }
+
+        function disconnectStream() {
+            socket.emit('its_disconnect_stream');
+            document.getElementById('streamImg').style.display = 'none';
+            document.getElementById('streamPlaceholder').style.display = 'block';
+            document.getElementById('currentCctvName').textContent = '// SELECT CCTV';
+            document.getElementById('btnDetect').disabled = true;
+            document.getElementById('btnStop').disabled = true;
+        }
+
+        socket.on('its_frame', (data) => {
+            document.getElementById('streamImg').src = 'data:image/jpeg;base64,' + data.frame;
+        });
+
+        socket.on('its_detection_result', (data) => {
+            const html = data.detections.map(d =>
+                `<span class="det-badge">${d.class_name} ${(d.confidence * 100).toFixed(0)}%</span>`
+            ).join('');
+            document.getElementById('detectionResult').innerHTML =
+                html || '<span style="font-size:0.75rem; color:rgba(255,255,255,0.2);">탐지 대기 중</span>';
+        });
+    </script>
+</body>
+</html>
